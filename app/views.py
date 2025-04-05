@@ -6,13 +6,14 @@ This file creates your application.
 """
 
 from app import app
-from flask import render_template, request, jsonify, send_file
+from flask import Blueprint, render_template, request, jsonify, send_file
 import os
 from werkzeug.utils import secure_filename
 from app import db
 from app.models import Movie
 from app.forms import MovieForm
 from app.views import form_errors
+from flask_wtf.csrf import generate_csrf
 
 
 ###
@@ -55,6 +56,11 @@ def movies():
 
     # If form is not valid, return validation errors
     return jsonify({"errors": form_errors(form)}), 400
+
+
+@app.route('/api/v1/csrf-token', methods=['GET'])
+def get_csrf():
+    return jsonify({'csrf_token': generate_csrf()})
 
 ###
 # The functions below should be applicable to all Flask apps.
