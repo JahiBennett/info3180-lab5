@@ -14,7 +14,8 @@ from app.models import Movie
 from app.forms import MovieForm
 from app.views import form_errors
 from flask_wtf.csrf import generate_csrf
-
+from flask_wtf.file import FileField 
+from datetime import datetime
 
 ###
 # Routing for your application.
@@ -29,33 +30,42 @@ api = Blueprint('api', __name__)
 UPLOAD_FOLDER = 'uploads'  # Make sure this exists in your project
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 
-@api.route('/api/v1/movies', methods=['POST'])
+@app.route('/api/v1/movies', methods=['POST'])
 def movies():
     form = MovieForm()
 
     if form.validate_on_submit():
-        title = form.title.data
-        description = form.description.data
-        poster = form.poster.data
+        #Save the uploaded file
+        poster_file = form.poster.data
+        poster_filename = poster_file.filename
+        poster_path = os.path.join(app.config['UPLOAD_FOLDER'], poster_filename)
+        poster_file.save(poster_path)
 
-        # Save the file securely
-        filename = secure_filename(poster.filename)
-        poster.save(os.path.join(UPLOAD_FOLDER, filename))
 
-        # Create and save the new movie
-        new_movie = Movie(title=title, description=description, poster=filename)
+        #Create a new Movie Instance
+        new_movie = Movie(
+            title = form.title.data,
+            description = form.description.data,
+            poster=poster_filename,
+            created_at=datetime.now()
+        )
+
+        #Add the movie to the database
         db.session.add(new_movie)
         db.session.commit()
 
+
+        #Return a success message
         return jsonify({
             "message": "Movie Successfully added",
-            "title": title,
-            "poster": filename,
-            "description": description
+            "title": new_movie.title,
+            "poster": new_movie.poster,
+            "description": new_movie.description
         }), 201
-
-    # If form is not valid, return validation errors
-    return jsonify({"errors": form_errors(form)}), 400
+    else:
+        #Collect Form Errors
+        errors = form_errors(form)
+        return jsonify({"errors": errors}), 400
 
 
 @app.route('/api/v1/csrf-token', methods=['GET'])
